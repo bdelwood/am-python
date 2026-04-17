@@ -85,4 +85,4 @@ jobs:
         run: uv build --wheel
 
       - name: Run tests
-        run: uv run --with dist/*.whl pytest py/tests
+        run: uv run --with dist/*.whl pytest
