@@ -81,8 +81,5 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Build wheel
-        run: uv build --wheel
-
-      - name: Run tests
-        run: uv run --with dist/*.whl pytest
+      - name: Install and test
+        run: uv run --group dev pytest

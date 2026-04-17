@@ -13,11 +13,11 @@ inputs:
   am-dir:
     description: Directory to extract am source into
     required: false
-    default: "am"
+    default: "am-source"
   am-src-dir:
     description: am source directory consumed by build.rs
     required: false
-    default: "am/src"
+    default: "am-source/src"
   amc-url:
     description: URL of amc for tests
     required: false
