@@ -1,5 +1,6 @@
 use crate::error::{AmError, AmResult};
 use crate::ffi;
+use log::{debug, info};
 use std::ffi::{CString, c_char, c_int};
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
@@ -70,6 +71,7 @@ impl AmModel {
         // This restores output[] and outcol[] to their initial values,
         // clearing any dangling spectrum pointers and stale flags from
         // a previous model run.
+        debug!("Resetting am global output state");
         unsafe { reset_output_globals() };
 
         let path_str = path
@@ -105,10 +107,14 @@ impl AmModel {
 
         if ret != 0 {
             return Err(AmError::ConfigParse(format!(
-                "Config parser returned non-zero error code: {}",
-                ret
+                "parse_config_file returned error code {ret}"
             )));
         }
+
+        info!(
+            "Parsed config: {path_str}, ngrid={}, nlayers={}",
+            model.ngrid, model.nlayers
+        );
 
         Ok(Self {
             model,
@@ -123,16 +129,17 @@ impl AmModel {
 
         // pass in model struct to first arg
         // null for second, as we've not implemented lmodel yet.
+        debug!("Calling compute_model (ngrid={})", self.model.ngrid);
         let ret = unsafe { ffi::compute_model(&mut self.model, std::ptr::null_mut()) };
 
         if ret != 0 {
             return Err(AmError::Compute(format!(
-                "compute_model returned non-zero error code: {}",
-                ret
+                "compute_model returned error code {ret}"
             )));
         }
 
         self.computed = true;
+        debug!("Computation complete");
 
         Ok(())
     }
@@ -156,6 +163,7 @@ impl AmModel {
 
 impl Drop for AmModel {
     fn drop(&mut self) {
+        debug!("Dropping AmModel, freeing model entities");
         let _lock = AM_MUTEX.lock().unwrap();
         unsafe {
             ffi::free_model_entities(&mut self.model);

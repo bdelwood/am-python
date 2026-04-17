@@ -45,12 +45,14 @@ mod am {
         #[new]
         #[pyo3(signature = (path, args))]
         fn new(path: &str, args: Vec<String>) -> PyResult<Self> {
+            info!("Loading model from {path}");
             Ok(Self {
                 inner: AmModel::from_amc(Path::new(path), &args)?,
             })
         }
 
         fn compute(&mut self, py: Python<'_>) -> PyResult<()> {
+            debug!("Running compute");
             py.detach(|| self.inner.compute())?;
             Ok(())
         }
