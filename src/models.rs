@@ -2,10 +2,35 @@ use crate::error::{AmError, AmResult};
 use crate::ffi;
 use std::ffi::{CString, c_char, c_int};
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 
-// guard mutex for am's global state
+// Mutex serializes access to am's global mutable state.
 static AM_MUTEX: Mutex<()> = Mutex::new(());
+
+// Wrapper to make output_tabentry array Sync
+// safety: safe because access is serialized by the mutex.
+struct SyncOutputTable([ffi::output_tabentry; 14]);
+unsafe impl Sync for SyncOutputTable {}
+unsafe impl Send for SyncOutputTable {}
+
+// Save initial state of am's output[] and outcol[] globals.
+// Captured on first use, restored before each new model run.
+static INITIAL_OUTPUT: OnceLock<SyncOutputTable> = OnceLock::new();
+static INITIAL_OUTCOL: OnceLock<[c_int; 13]> = OnceLock::new();
+
+/// Save am's global output state on first call, then restore it every call)
+/// Must be called under the mutex.
+unsafe fn reset_output_globals() {
+    INITIAL_OUTPUT.get_or_init(|| SyncOutputTable(unsafe { ffi::output }));
+    INITIAL_OUTCOL.get_or_init(|| unsafe { ffi::outcol });
+
+    if let Some(saved) = INITIAL_OUTPUT.get() {
+        unsafe { ffi::output = saved.0 };
+    }
+    if let Some(saved) = INITIAL_OUTCOL.get() {
+        unsafe { ffi::outcol = *saved };
+    }
+}
 
 macro_rules! model_output_accessor {
     ($name:ident, $field:ident) => {
@@ -40,6 +65,12 @@ impl AmModel {
     // args are just like one would pass in the command line
     pub fn from_amc(path: &Path, args: &[String]) -> AmResult<Self> {
         let _lock = AM_MUTEX.lock().unwrap();
+
+        // Reset am's global output state before parsing a new config.
+        // This restores output[] and outcol[] to their initial values,
+        // clearing any dangling spectrum pointers and stale flags from
+        // a previous model run.
+        unsafe { reset_output_globals() };
 
         let path_str = path
             .to_str()
@@ -130,9 +161,9 @@ impl Drop for AmModel {
             ffi::free_model_entities(&mut self.model);
             ffi::free_fit_data_entities(&mut self.fit_data);
             ffi::free_simplex_entities(&mut self.simplex);
-            ffi::kcache_free_all();
-            ffi::free_Nscale_list();
-            ffi::free_tag_string_table();
+            // Unlike main.c, Do NOT call kcache_free_all(), free_Nscale_list(),free_tag_string_table()
+            // They free memory but leave their file-scope static pointers dangling;
+            // they are not reset to null.
         }
     }
 }
@@ -145,10 +176,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_from_amc() {
-        AmModel::from_amc(
-            Path::new("/home/brodi/Documents/git/github/kovac-code/projects/visualizations/outputs/SPole_JJA_75.amc"),
-            ["0", "GHz", "350", "GHz", "0.01", "GHz", "35", "deg", "1.0"],
-        ).unwrap();
+    fn test_sequential_runs() {
+        let amc = Path::new("assets/SPole_JJA_75.amc");
+        let args: Vec<String> = ["0", "GHz", "350", "GHz", "0.01", "GHz", "35", "deg", "1.0"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        for i in 0..3 {
+            let mut m = AmModel::from_amc(amc, &args).unwrap();
+            m.compute().unwrap();
+            assert_eq!(m.frequency().len(), 35001, "run {i}: wrong grid size");
+            assert!(m.transmittance().is_some(), "run {i}: no transmittance");
+        }
     }
 }

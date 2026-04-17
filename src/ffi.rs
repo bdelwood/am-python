@@ -593,6 +593,71 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn free_model_entities(arg1: *mut model_t);
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct output_tabentry {
+    pub name: *const ::std::os::raw::c_char,
+    pub spectrum: *mut f64,
+    pub jacobian: *mut *mut f64,
+    pub jacobian_round_err: *mut *mut f64,
+    pub jacobian_trunc_err: *mut *mut f64,
+    pub jacobian_sorted_err: *mut *mut f64,
+    pub default_unitnum: ::std::os::raw::c_int,
+    pub unitnum: ::std::os::raw::c_int,
+    pub k_typenum: ::std::os::raw::c_int,
+    pub flags: ::std::os::raw::c_int,
+    pub format: ::std::os::raw::c_int,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of output_tabentry"][::std::mem::size_of::<output_tabentry>() - 72usize];
+    ["Alignment of output_tabentry"][::std::mem::align_of::<output_tabentry>() - 8usize];
+    ["Offset of field: output_tabentry::name"]
+        [::std::mem::offset_of!(output_tabentry, name) - 0usize];
+    ["Offset of field: output_tabentry::spectrum"]
+        [::std::mem::offset_of!(output_tabentry, spectrum) - 8usize];
+    ["Offset of field: output_tabentry::jacobian"]
+        [::std::mem::offset_of!(output_tabentry, jacobian) - 16usize];
+    ["Offset of field: output_tabentry::jacobian_round_err"]
+        [::std::mem::offset_of!(output_tabentry, jacobian_round_err) - 24usize];
+    ["Offset of field: output_tabentry::jacobian_trunc_err"]
+        [::std::mem::offset_of!(output_tabentry, jacobian_trunc_err) - 32usize];
+    ["Offset of field: output_tabentry::jacobian_sorted_err"]
+        [::std::mem::offset_of!(output_tabentry, jacobian_sorted_err) - 40usize];
+    ["Offset of field: output_tabentry::default_unitnum"]
+        [::std::mem::offset_of!(output_tabentry, default_unitnum) - 48usize];
+    ["Offset of field: output_tabentry::unitnum"]
+        [::std::mem::offset_of!(output_tabentry, unitnum) - 52usize];
+    ["Offset of field: output_tabentry::k_typenum"]
+        [::std::mem::offset_of!(output_tabentry, k_typenum) - 56usize];
+    ["Offset of field: output_tabentry::flags"]
+        [::std::mem::offset_of!(output_tabentry, flags) - 60usize];
+    ["Offset of field: output_tabentry::format"]
+        [::std::mem::offset_of!(output_tabentry, format) - 64usize];
+};
+unsafe extern "C" {
+    pub static mut output: [output_tabentry; 14usize]; // OUTPUT_END_OF_TABLE + 1
+}
+pub const OUTPUT_NONE: _bindgen_ty_6 = 0;
+pub const OUTPUT_FREQUENCY: _bindgen_ty_6 = 1;
+pub const OUTPUT_OPACITY: _bindgen_ty_6 = 2;
+pub const OUTPUT_TRANSMITTANCE: _bindgen_ty_6 = 3;
+pub const OUTPUT_RADIANCE: _bindgen_ty_6 = 4;
+pub const OUTPUT_RADIANCE_DIFF: _bindgen_ty_6 = 5;
+pub const OUTPUT_TB_PLANCK: _bindgen_ty_6 = 6;
+pub const OUTPUT_TB_RAYLEIGH_JEANS: _bindgen_ty_6 = 7;
+pub const OUTPUT_TSYS: _bindgen_ty_6 = 8;
+pub const OUTPUT_Y: _bindgen_ty_6 = 9;
+pub const OUTPUT_DELAY: _bindgen_ty_6 = 10;
+pub const OUTPUT_FREE_SPACE_LOSS: _bindgen_ty_6 = 11;
+pub const OUTPUT_K: _bindgen_ty_6 = 12;
+pub const OUTPUT_END_OF_TABLE: _bindgen_ty_6 = 13;
+pub type _bindgen_ty_6 = ::std::os::raw::c_uint;
+pub const ALL_OUTPUTS: _bindgen_ty_7 = 13;
+pub type _bindgen_ty_7 = ::std::os::raw::c_uint;
+unsafe extern "C" {
+    pub static mut outcol: [::std::os::raw::c_int; 13usize]; // OUTPUT_END_OF_TABLE
+}
 unsafe extern "C" {
     pub fn set_active_outputs(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
 }

@@ -61,7 +61,7 @@ fn main() {
             .header(am_src.join("tags.h").to_str().unwrap())
             .header(am_src.join("simplex.h").to_str().unwrap())
             .clang_arg(format!("-I{}", am_src.display()))
-            .allowlist_type("model_t|layer_t|column_t|abscoeff_t|fit_data_t|simplex_t")
+            .allowlist_type("model_t|layer_t|column_t|abscoeff_t|fit_data_t|simplex_t|output_tabentry")
             .allowlist_function(
                 "parse_config_file|compute_model|setup_atmospheric_model|\
                  total_airmass|total_refraction|\
@@ -69,7 +69,7 @@ fn main() {
                  kcache_free_all|free_Nscale_list|free_tag_string_table|\
                  errstat|print_errlog|set_active_outputs",
             )
-            .allowlist_var("MODEL_INIT|FIT_DATA_INIT|SIMPLEX_INIT")
+            .allowlist_var("MODEL_INIT|FIT_DATA_INIT|SIMPLEX_INIT|output|outcol|OUTPUT_END_OF_TABLE|ALL_OUTPUTS")
             .blocklist_type("FILE|_IO_FILE|_IO_marker|_IO_codecvt|_IO_wide_data")
             .raw_line("pub type FILE = std::os::raw::c_void;")
             .generate()
