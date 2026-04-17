@@ -1,0 +1,56 @@
+name: Setup am assets
+description: Cache am source and fetch test amc
+
+inputs:
+  am-version:
+    description: am source version for cache key
+    required: false
+    default: "14.0"
+  am-source-url:
+    description: URL to am source tarball
+    required: false
+    default: "https://zenodo.org/records/13748403/files/am-14.0.tgz?download=1"
+  am-dir:
+    description: Directory to extract am source into
+    required: false
+    default: "am"
+  am-src-dir:
+    description: am source directory consumed by build.rs
+    required: false
+    default: "am/src"
+  amc-url:
+    description: URL of amc for tests
+    required: false
+    default: "https://lweb.cfa.harvard.edu/~spaine/am/cookbook/unix/sites/SPole/SPole_JJA_75.amc"
+  amc-file:
+    description: Destination path for amc 
+    required: false
+    default: "assets/SPole_JJA_75.amc"
+
+runs:
+  using: composite
+  steps:
+    - name: Restore cached am source
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.am-dir }}
+        key: am-source-${{ runner.os }}-${{ inputs.am-version }}
+
+    - name: Download and extract am source
+      shell: bash
+      run: |
+        if [ ! -f "${{ inputs.am-src-dir }}/model.c" ]; then
+          rm -rf "${{ inputs.am-dir }}"
+          mkdir -p "${{ inputs.am-dir }}"
+          curl -fsSL "${{ inputs.am-source-url }}" | tar -xz --strip-components=1 -C "${{ inputs.am-dir }}"
+        fi
+
+    - name: Download AMC fixture
+      shell: bash
+      run: |
+        mkdir -p "$(dirname "${{ inputs.amc-file }}")"
+        curl -fsSL "${{ inputs.amc-url }}" -o "${{ inputs.amc-file }}"
+
+    - name: Export AM_SRC_DIR
+      shell: bash
+      run: echo "AM_SRC_DIR=${{ github.workspace }}/${{ inputs.am-src-dir }}" >> "$GITHUB_ENV"

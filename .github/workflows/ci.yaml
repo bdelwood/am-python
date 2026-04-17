@@ -1,0 +1,88 @@
+name: Format, lint, and test
+
+on:
+  push:
+    paths:
+      - "**/*.rs"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "build.rs"
+      - "pyproject.toml"
+      - ".github/actions/setup-am/**"
+      - ".github/workflows/ci.yaml"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  format:
+    name: Rust format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  check:
+    name: Run linting + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup am source and config
+        uses: ./.github/actions/setup-am
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: clippy
+
+      - name: Check toolchain
+        shell: bash
+        run: |
+          rustup show
+          rustup toolchain list
+          cargo -V
+
+      - name: Run Clippy
+        shell: bash
+        run: cargo clippy --release
+
+      - name: Run tests
+        run: cargo test --release
+
+  python-tests:
+    name: Run Python tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.14"
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup AM source and fixture
+        uses: ./.github/actions/setup-am
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install uv and set Python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Build wheel
+        run: uv build --wheel
+
+      - name: Run tests
+        run: uv run --with dist/*.whl pytest py/tests
