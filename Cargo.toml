@@ -1,0 +1,28 @@
+[package]
+name = "am-python"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "am"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+env_logger = "0.11.10"
+log = "0.4.29"
+numpy = "0.28.0"
+pyo3 = { version = "0.28.3", features = ["extension-module", "abi3-py310"] }
+pyo3-log = "0.13.3"
+pyo3-stub-gen = "0.22.1"
+thiserror = "2.0.18"
+
+
+[build-dependencies]
+bindgen = "0.72.1"
+cc = "1"
+
+
+[features]
+default = ["openmp"]
+openmp = []
+bindgen = []

@@ -1,0 +1,29 @@
+[project]
+name = "am-python"
+version = "0.1.0"
+description = "Python bindings for am"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Brodi Elwood", email = "bdelwood@fas.harvard.edu" }]
+keywords = ["rust", "am", "atmospheric modelling"]
+classifiers = [
+    "Development Status :: 3 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+    "Operating System :: POSIX :: Linux",
+    "License :: OSI Approved :: MIT License",
+]
+
+dependencies = ["numpy>=2.1"]
+
+[dependency-groups]
+dev = ["pytest>=9.0.2"]
+
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+bindings = "pyo3"
+features = ["pyo3/extension-module"]
