@@ -45,10 +45,14 @@ mod am {
     impl Model {
         #[new]
         #[pyo3(signature = (path, args))]
-        fn new(path: &str, args: Vec<String>) -> PyResult<Self> {
+        fn new(path: &str, args: Vec<Bound<'_, PyAny>>) -> PyResult<Self> {
             info!("Loading model from {path}");
+            let string_args: Vec<String> = args
+                .iter()
+                .map(|a| a.str().map(|s| s.to_string()))
+                .collect::<PyResult<_>>()?;
             Ok(Self {
-                inner: AmModel::from_amc(Path::new(path), &args)?,
+                inner: models::AmModel::from_amc(Path::new(path), &string_args)?,
             })
         }
 

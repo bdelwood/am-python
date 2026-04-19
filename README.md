@@ -20,7 +20,7 @@ uv pip install .
 ```python
 import am
 
-m = am.Model("SPole_JJA_75.amc", ["0", "GHz", "350", "GHz", "0.01", "GHz", "35", "deg", "1.0"])
+m = am.Model("SPole_JJA_75.amc", [0, "GHz", 350, "GHz", 0.01, "GHz", 35, "deg", 1.0])
 m.compute()
 
 m.frequency       # numpy array, GHz
