@@ -67,7 +67,8 @@ fn main() {
                  total_airmass|total_refraction|\
                  free_model_entities|free_fit_data_entities|free_simplex_entities|\
                  kcache_free_all|free_Nscale_list|free_tag_string_table|\
-                 errstat|print_errlog|set_active_outputs",
+                 errstat|errtest|print_errlog|set_active_outputs|\
+                 write_model_config_data",
             )
             .allowlist_var("MODEL_INIT|FIT_DATA_INIT|SIMPLEX_INIT|output|outcol|OUTPUT_END_OF_TABLE|ALL_OUTPUTS")
             .blocklist_type("FILE|_IO_FILE|_IO_marker|_IO_codecvt|_IO_wide_data")

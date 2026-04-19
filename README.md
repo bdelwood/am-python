@@ -3,6 +3,7 @@
 <!-- readme-include-start -->
 [![CI status][ci-img]][ci-url]
 [![Documentation][doc-img]][doc-url]
+[![PyPI version][pypi-img]][pypi-url]
 [![Wheels][wheels-img]][wheels-url]
 [![License][license-img]][license-url]
 
@@ -10,6 +11,8 @@
 [ci-url]: https://github.com/bdelwood/am-python/actions/workflows/ci.yaml
 [doc-img]: https://img.shields.io/badge/docs-am--python-4d76ae?style=flat-square
 [doc-url]: https://bdelwood.github.io/am-python/
+[pypi-img]: https://img.shields.io/pypi/v/am-python?style=flat-square
+[pypi-url]: https://pypi.org/project/am-python/
 [wheels-img]: https://img.shields.io/github/actions/workflow/status/bdelwood/am-python/release.yaml?branch=master&style=flat-square&label=Wheels
 [wheels-url]: https://github.com/bdelwood/am-python/actions/workflows/release.yaml
 [license-img]: https://img.shields.io/badge/license-MIT-yellow?style=flat-square

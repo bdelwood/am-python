@@ -636,7 +636,8 @@ const _: () = {
         [::std::mem::offset_of!(output_tabentry, format) - 64usize];
 };
 unsafe extern "C" {
-    pub static mut output: [output_tabentry; 14usize]; // OUTPUT_END_OF_TABLE + 1
+    // bindgen emits 0 for unsized extern arrays; actual size is ALL_OUTPUTS + 1
+    pub static mut output: [output_tabentry; 14usize];
 }
 pub const OUTPUT_NONE: _bindgen_ty_6 = 0;
 pub const OUTPUT_FREQUENCY: _bindgen_ty_6 = 1;
@@ -656,13 +657,25 @@ pub type _bindgen_ty_6 = ::std::os::raw::c_uint;
 pub const ALL_OUTPUTS: _bindgen_ty_7 = 13;
 pub type _bindgen_ty_7 = ::std::os::raw::c_uint;
 unsafe extern "C" {
-    pub static mut outcol: [::std::os::raw::c_int; 13usize]; // OUTPUT_END_OF_TABLE
+    // bindgen emits 0 for unsized extern arrays; actual size is OUTPUT_END_OF_TABLE
+    pub static mut outcol: [::std::os::raw::c_int; 13usize];
 }
 unsafe extern "C" {
     pub fn set_active_outputs(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
+    pub fn write_model_config_data(
+        arg1: *mut FILE,
+        arg2: *mut model_t,
+        arg3: *mut fit_data_t,
+        arg4: *mut simplex_t,
+    );
+}
+unsafe extern "C" {
     pub fn errstat() -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    pub fn errtest(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
     pub fn print_errlog() -> ::std::os::raw::c_int;

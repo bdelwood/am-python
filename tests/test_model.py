@@ -1,16 +1,20 @@
-import am
 import numpy as np
 
-AMC = "assets/SPole_JJA_75.amc"
-ARGS = ["0", "GHz", "350", "GHz", "0.5", "GHz", "35", "deg", "1.0"]
 
-
-def test_sequential_runs():
+def test_sequential_runs(amc, args):
     """Three sequential model runs should all produce identical, valid results."""
+    import am
+
     for i in range(3):
-        m = am.Model(AMC, ARGS)
+        m = am.Model(amc, args)
         m.compute()
         assert m.frequency.shape == (701,), f"run {i}: wrong grid size"
         assert m.transmittance is not None, f"run {i}: no transmittance"
         np.testing.assert_allclose(m.transmittance[300], 0.9707, atol=1e-3)
         del m
+
+
+def test_summary(model):
+    summary = model.summary()
+    assert "am version" in summary
+    assert "f 0 GHz" in summary

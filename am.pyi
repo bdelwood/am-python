@@ -7,17 +7,42 @@ import numpy.typing
 import typing
 
 __all__ = [
+    "AmError",
+    "ComputeError",
+    "ConfigError",
     "Model",
 ]
+
+class AmError(builtins.Exception):
+    r"""
+    Base exception for am errors.
+    """
+
+    ...
+
+class ComputeError(builtins.AmError):
+    r"""
+    Error during model computation.
+    """
+
+    ...
+
+class ConfigError(builtins.AmError):
+    r"""
+    Error parsing an .amc configuration file.
+    """
+
+    ...
 
 @typing.final
 class Model:
     @property
     def frequency(self) -> numpy.typing.NDArray[numpy.float64]: ...
     def __new__(
-        cls, path: builtins.str, args: typing.Sequence[builtins.str]
+        cls, path: builtins.str, args: typing.Sequence[typing.Any]
     ) -> Model: ...
     def compute(self) -> None: ...
+    def summary(self) -> builtins.str: ...
     def __getattr__(
         self, name: builtins.str
     ) -> numpy.typing.NDArray[numpy.float64]: ...

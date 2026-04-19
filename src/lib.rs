@@ -9,8 +9,6 @@ mod error;
 mod ffi;
 mod models;
 
-use models::AmModel;
-
 use log::{debug, info};
 use numpy::PyArray1;
 use pyo3::exceptions::PyAttributeError;
@@ -26,18 +24,19 @@ mod am {
     use std::path::Path;
 
     #[pymodule_init]
-    fn init(_m: &Bound<'_, PyModule>) -> PyResult<()> {
-        pyo3_log::Logger::new(_m.py(), pyo3_log::Caching::LoggersAndLevels)?
+    fn init(m: &Bound<'_, PyModule>) -> PyResult<()> {
+        pyo3_log::Logger::new(m.py(), pyo3_log::Caching::LoggersAndLevels)?
             .filter(log::LevelFilter::Trace)
             .install()
             .ok();
+        error::register(m)?;
         Ok(())
     }
 
     #[gen_stub_pyclass]
     #[pyclass]
     struct Model {
-        inner: AmModel,
+        inner: models::AmModel,
     }
 
     #[gen_stub_pymethods]
@@ -65,6 +64,11 @@ mod am {
         #[getter]
         fn frequency<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
             PyArray1::from_slice(py, self.inner.frequency())
+        }
+
+        // print summary like CLI
+        fn summary(&mut self) -> String {
+            self.inner.summary()
         }
 
         fn __getattr__<'py>(
