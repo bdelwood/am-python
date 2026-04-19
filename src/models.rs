@@ -186,7 +186,7 @@ mod tests {
     #[test]
     fn test_sequential_runs() {
         let amc = Path::new("assets/SPole_JJA_75.amc");
-        let args: Vec<String> = ["0", "GHz", "350", "GHz", "0.01", "GHz", "35", "deg", "1.0"]
+        let args: Vec<String> = ["0", "GHz", "350", "GHz", "0.5", "GHz", "35", "deg", "1.0"]
             .iter()
             .map(|s| s.to_string())
             .collect();
@@ -194,7 +194,7 @@ mod tests {
         for i in 0..3 {
             let mut m = AmModel::from_amc(amc, &args).unwrap();
             m.compute().unwrap();
-            assert_eq!(m.frequency().len(), 35001, "run {i}: wrong grid size");
+            assert_eq!(m.frequency().len(), 701, "run {i}: wrong grid size");
             assert!(m.transmittance().is_some(), "run {i}: no transmittance");
         }
     }
