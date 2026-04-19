@@ -2,6 +2,8 @@ name: Lint/format and test
 
 on:
   push:
+    branches:
+      - "**"
     paths:
       - "**/*.rs"
       - "**/*.py"
@@ -17,6 +19,10 @@ on:
       - ".github/workflows/*.yaml"
       - ".github/workflows/*.yml"
   workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
