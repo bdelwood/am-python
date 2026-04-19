@@ -1,6 +1,7 @@
 # am-python
 
 <!-- readme-include-start -->
+
 [![CI status][ci-img]][ci-url]
 [![Documentation][doc-img]][doc-url]
 [![PyPI version][pypi-img]][pypi-url]
@@ -22,14 +23,19 @@ Python bindings for Scott Paine's [am atmospheric model](https://lweb.cfa.harvar
 
 ## Install
 
-Requires the [am source code](https://doi.org/10.5281/zenodo.8161261) (v14.0) and a C compiler.
+Pre-built wheels are available on PyPI for Linux:
 
 ```bash
-# Download and extract am source
+uv pip install am-python
+```
+
+### From source
+
+Requires the [am source code](https://doi.org/10.5281/zenodo.8161261) (tested on v14.0), a C compiler, and a Rust toolchain.
+
+```bash
 curl -fsSL "https://zenodo.org/records/13748403/files/am-14.0.tgz?download=1" | tar -xz
 export AM_SRC_DIR=$PWD/am-14.0/src
-
-# Install
 uv pip install .
 ```
 
