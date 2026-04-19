@@ -28,3 +28,32 @@ m.transmittance   # numpy array
 m.opacity         # numpy array, nepers
 m.tb_planck       # numpy array, K
 ```
+
+## Development
+
+This project uses `just` to orchestrate common tasks and `pre-commit` for local checks.
+
+```bash
+# install deps
+just sync
+
+# run tests
+just test
+just test py
+just test rs
+
+# run formatting/lint checks
+just fmt
+just fmt-check
+just lint
+just typecheck
+
+# build docs
+just docs
+just docs py
+just docs rs
+
+# run pre-commit hooks on all files
+just precommit
+just prepush
+```

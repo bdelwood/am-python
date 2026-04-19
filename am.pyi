@@ -5,6 +5,7 @@ import builtins
 import numpy
 import numpy.typing
 import typing
+
 __all__ = [
     "Model",
 ]
@@ -13,7 +14,10 @@ __all__ = [
 class Model:
     @property
     def frequency(self) -> numpy.typing.NDArray[numpy.float64]: ...
-    def __new__(cls, path: builtins.str, args: typing.Sequence[builtins.str]) -> Model: ...
+    def __new__(
+        cls, path: builtins.str, args: typing.Sequence[builtins.str]
+    ) -> Model: ...
     def compute(self) -> None: ...
-    def __getattr__(self, name: builtins.str) -> numpy.typing.NDArray[numpy.float64]: ...
-
+    def __getattr__(
+        self, name: builtins.str
+    ) -> numpy.typing.NDArray[numpy.float64]: ...

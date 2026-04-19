@@ -23,13 +23,13 @@ inputs:
     required: false
     default: "https://lweb.cfa.harvard.edu/~spaine/am/cookbook/unix/sites/SPole/SPole_JJA_75.amc"
   amc-file:
-    description: Destination path for amc 
+    description: Destination path for amc
     required: false
     default: "assets/SPole_JJA_75.amc"
   download-amc:
-    description: Download AMC fixture file
+    description: Download amc test conf
     required: false
-    default: "true"
+    default: "false"
 
 runs:
   using: composite

@@ -20,7 +20,7 @@ jobs:
       - name: Setup AM source
         uses: ./.github/actions/setup-am
         with:
-          download-amc: false
+          download-amc: "false"
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1

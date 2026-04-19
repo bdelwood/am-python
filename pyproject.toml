@@ -8,7 +8,7 @@ license = { text = "MIT" }
 authors = [{ name = "Brodi Elwood", email = "bdelwood@fas.harvard.edu" }]
 keywords = ["rust", "am", "atmospheric modelling"]
 classifiers = [
-    "Development Status :: 3 - Beta",
+    "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
     "Programming Language :: Rust",
     "Operating System :: POSIX :: Linux",
@@ -18,7 +18,16 @@ classifiers = [
 dependencies = ["numpy>=2.1"]
 
 [dependency-groups]
-dev = ["pytest>=9.0.2"]
+dev = [
+    "pytest>=9.0.2",
+    "pre-commit>=3.8",
+    "ruff>=0.11",
+    "pyrefly>=0.30",
+    "sphinx>=8",
+    "furo>=2024",
+    "myst-parser>=4",
+    "sphinx-autoapi>=3",
+]
 
 [build-system]
 requires = ["maturin>=1.5,<2.0"]
@@ -27,3 +36,12 @@ build-backend = "maturin"
 [tool.maturin]
 bindings = "pyo3"
 features = ["pyo3/extension-module"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.pyrefly]
+python-interpreter-path = ".venv/bin/python"
+search-path = ["."]
+project-excludes = ["**/.venv*", "notebooks/**"]

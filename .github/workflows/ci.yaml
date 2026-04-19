@@ -1,65 +1,92 @@
-name: Format, lint, and test
+name: Lint/format and test
 
 on:
   push:
     paths:
       - "**/*.rs"
+      - "**/*.py"
+      - "**/*.pyi"
       - "Cargo.toml"
       - "Cargo.lock"
       - "build.rs"
       - "pyproject.toml"
+      - "uv.lock"
+      - "justfile"
+      - ".pre-commit-config.yaml"
       - ".github/actions/setup-am/**"
-      - ".github/workflows/ci.yaml"
+      - ".github/workflows/*.yaml"
+      - ".github/workflows/*.yml"
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  format:
-    name: Rust format
+  rust-lint-format:
+    name: Rust lint and format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          components: rustfmt
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-  check:
-    name: Run linting + tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup am source and config
+      - name: Setup am source
         uses: ./.github/actions/setup-am
 
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          components: clippy
+          components: rustfmt, clippy
 
-      - name: Check toolchain
-        shell: bash
-        run: |
-          rustup show
-          rustup toolchain list
-          cargo -V
+      - name: Install just
+        uses: extractions/setup-just@v4
 
-      - name: Run Clippy
-        shell: bash
-        run: cargo clippy --release
+      - name: Check Rust formatting
+        run: just fmt-check rs
 
-      - name: Run tests
-        run: cargo test --release
+      - name: Run Rust lints
+        run: just lint rs
+
+  python-lint-format:
+    name: Python lint and format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install just
+        uses: extractions/setup-just@v4
+
+      - name: Check Python formatting
+        run: just fmt-check py
+
+      - name: Run Python lints
+        run: just lint py
+
+  rust-tests:
+    name: Rust tests
+    needs: rust-lint-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup am source and fixture
+        uses: ./.github/actions/setup-am
+        with:
+          download-amc: "true"
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install just
+        uses: extractions/setup-just@v4
+
+      - name: Run Rust tests
+        run: just test rs
 
   python-tests:
-    name: Run Python tests
+    name: Python tests
+    needs: python-lint-format
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -70,16 +97,21 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup AM source and fixture
+      - name: Setup am source and fixture
         uses: ./.github/actions/setup-am
+        with:
+          download-amc: "true"
 
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - name: Install uv and set Python version
+      - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install and test
-        run: uv run --group dev pytest
+      - name: Install just
+        uses: extractions/setup-just@v4
+
+      - name: Run Python tests
+        run: just test py
