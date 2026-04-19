@@ -1,5 +1,6 @@
 # am-python
 
+<!-- readme-include-start -->
 [![CI status][ci-img]][ci-url]
 [![Documentation][doc-img]][doc-url]
 [![Wheels][wheels-img]][wheels-url]
@@ -12,7 +13,7 @@
 [wheels-img]: https://img.shields.io/github/actions/workflow/status/bdelwood/am-python/release.yaml?branch=master&style=flat-square&label=Wheels
 [wheels-url]: https://github.com/bdelwood/am-python/actions/workflows/release.yaml
 [license-img]: https://img.shields.io/badge/license-MIT-yellow?style=flat-square
-[license-url]: ./LICENSE
+[license-url]: https://github.com/bdelwood/am-python/blob/master/LICENSE
 
 Python bindings for Scott Paine's [am atmospheric model](https://lweb.cfa.harvard.edu/~spaine/am/), via Rust (PyO3).
 

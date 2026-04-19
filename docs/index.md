@@ -1,11 +1,14 @@
 # am-python
 
-Python bindings for the Scott Paine's `am` atmospheric radiative transfer modelling software.
+```{include} ../README.md
+:start-after: <!-- readme-include-start -->
+```
 
-Internal Rust crate documentation is available at [here](./rust/am/){.external}.
+Internal Rust crate documentation is available [here](./rust/am/){.external}.
 
 ```{toctree}
-:maxdepth: 2
+:hidden:
+:caption: API Reference
 
 autoapi/index
 ```
