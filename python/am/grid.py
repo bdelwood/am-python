@@ -15,7 +15,7 @@ def _run_model(path: Path, args: list[str]) -> tuple[np.ndarray, dict[str, np.nd
     """Worker: parse + compute one model, return frequency and output arrays."""
     m = Model(path, args)
     m.compute()
-    return m.frequency.copy(), {k: v.copy() for k, v in m.outputs.items()}
+    return m.frequency.copy(), {k: v.copy() for k, v in m.raw_outputs.items()}
 
 
 class ModelGrid:

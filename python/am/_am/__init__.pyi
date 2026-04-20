@@ -63,15 +63,23 @@ class Model:
         Frequency grid in GHz.
         """
     @property
-    def outputs(
+    def raw_outputs(
         self,
     ) -> builtins.dict[builtins.str, numpy.typing.NDArray[numpy.float64]]:
         r"""
         Dict mapping output name to computed spectrum array.
 
-        Keys are Python-style names (e.g. ``"tb_rj"``, ``"opacity"``).
-        Only outputs listed in the ``output`` directive of the ``.amc`` file
-        are present. Empty before :meth:`compute` is called.
+        Use the Python ``Model`` wrapper for xarray outputs.
+        """
+    @property
+    def variables(self) -> builtins.list[builtins.str]:
+        r"""
+        Names of fit/differentiation variables defined in the ``.amc`` config.
+        """
+    @property
+    def n_variables(self) -> builtins.int:
+        r"""
+        Number of fit/differentiation variables.
         """
     def __new__(
         cls,
@@ -84,6 +92,14 @@ class Model:
 
         Releases the GIL while running so other Python threads are not blocked.
         Must be called before accessing :attr:`outputs`.
+        """
+    def raw_jacobian(
+        self,
+    ) -> builtins.dict[builtins.str, numpy.typing.NDArray[numpy.float64]]:
+        r"""
+        Compute Jacobians of all outputs wrt fit variables.
+
+        Use the Python ``Model`` wrapper for xarray outputs.
         """
     def summary(self) -> builtins.str:
         r"""
