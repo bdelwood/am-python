@@ -9,8 +9,8 @@ def test_sequential_runs(amc, args):
         m = am.Model(amc, args)
         m.compute()
         assert m.frequency.shape == (701,), f"run {i}: wrong grid size"
-        assert m.transmittance is not None, f"run {i}: no transmittance"
-        np.testing.assert_allclose(m.transmittance[300], 0.9707, atol=1e-3)
+        assert "transmittance" in m.outputs, f"run {i}: no transmittance"
+        np.testing.assert_allclose(m.outputs["transmittance"][300], 0.9707, atol=1e-3)
         del m
 
 

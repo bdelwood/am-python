@@ -41,16 +41,55 @@ uv pip install .
 
 ## Usage
 
+### Single model
+
 ```python
 import am
 
 m = am.Model("SPole_JJA_75.amc", [0, "GHz", 350, "GHz", 0.01, "GHz", 35, "deg", 1.0])
 m.compute()
 
-m.frequency       # numpy array, GHz
-m.transmittance   # numpy array
-m.opacity         # numpy array, nepers
-m.tb_planck       # numpy array, K
+# numpy array, GHz
+m.frequency
+ # dict of computed outputs
+m.outputs
+# Rayleigh-Jeans brightness temperature, K
+m.outputs["tb_rj"]
+```
+
+### Parameter sweep
+
+```python
+import xarray as xr
+import am
+
+params = xr.Dataset(coords={
+    "elevation": [30, 45, 60, 75],   # deg
+    "pwv":       [0.5, 1.0, 2.0],    # mm
+})
+
+ds = am.ModelGrid(
+    "SPole_JJA_75.amc",
+    params,
+    args_fn=lambda elevation, pwv: [
+        0, "GHz", 350, "GHz", 0.5, "GHz", elevation, "deg", pwv
+    ],
+).compute()
+
+# xr.Dataset with dims (elevation, pwv, frequency)
+ds["tb_rj"].sel(elevation=45, pwv=1.0)
+```
+
+For irregular grids (e.g. a set of specific elevation/PWV pairs), use variables
+on a shared dimension instead:
+
+```python
+import numpy as np
+
+params = xr.Dataset({
+    "elevation": ("obs", elev_array),
+    "pwv":       ("obs", pwv_array),
+})
 ```
 
 ## Development

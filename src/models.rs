@@ -145,8 +145,11 @@ fn emit_warnings() {
 }
 
 macro_rules! model_output_accessor {
-    ($name:ident, $field:ident) => {
+    ($name:ident, $field:ident, $idx:expr) => {
         pub fn $name(&self) -> Option<&[f64]> {
+            if !self.computed || self.requested & (1 << $idx) == 0 {
+                return None;
+            }
             let ptr = self.model.$field;
             if ptr.is_null() {
                 None
@@ -171,6 +174,10 @@ pub(crate) struct AmModel {
     model: ffi::model_t,
     fit_data: ffi::fit_data_t,
     simplex: ffi::simplex_t,
+    /// Bitmask of OUTPUT_* indices that had the OUTPUT_USER flag set after parsing.
+    /// Bit i is set when output[i].flags & OUTPUT_USER != 0.
+    requested: u32,
+    computed: bool,
 }
 
 // now we just need to expose the methods needed to compute
@@ -237,8 +244,16 @@ impl AmModel {
 
         emit_warnings();
 
+        // Snapshot which outputs the user requested: bit i is set when
+        // output[i].flags has OUTPUT_USER set. Must be read now, under the mutex,
+        // before reset_output_globals wipes it for the next model.
+        const OUTPUT_USER: i32 = 0x1;
+        let requested: u32 = (0..14_usize)
+            .filter(|&i| (unsafe { ffi::output[i].flags } & OUTPUT_USER) != 0)
+            .fold(0u32, |acc, i| acc | (1 << i));
+
         info!(
-            "Parsed config: {path_str}, ngrid={}, nlayers={}",
+            "Parsed config: {path_str}, ngrid={}, nlayers={}, requested=0x{requested:x}",
             model.ngrid, model.nlayers
         );
 
@@ -246,6 +261,8 @@ impl AmModel {
             model,
             fit_data,
             simplex,
+            requested,
+            computed: false,
         })
     }
 
@@ -275,6 +292,7 @@ impl AmModel {
         }
 
         emit_warnings();
+        self.computed = true;
         debug!("Computation complete");
         Ok(())
     }
@@ -283,17 +301,17 @@ impl AmModel {
         unsafe { std::slice::from_raw_parts(self.model.f, self.model.ngrid as usize) }
     }
 
-    model_output_accessor!(opacity, tau);
-    model_output_accessor!(transmittance, tx);
-    model_output_accessor!(radiance, I);
-    model_output_accessor!(radiance_diff, I_diff);
-    model_output_accessor!(tb_planck, Tb);
-    model_output_accessor!(tb_rj, Trj);
-    model_output_accessor!(tsys, Tsys);
-    model_output_accessor!(y_factor, Y);
-    model_output_accessor!(delay, L);
-    model_output_accessor!(free_space_loss, tau_fsl);
-    model_output_accessor!(absorption_coeff, k_out);
+    model_output_accessor!(opacity, tau, ffi::OUTPUT_OPACITY);
+    model_output_accessor!(transmittance, tx, ffi::OUTPUT_TRANSMITTANCE);
+    model_output_accessor!(radiance, I, ffi::OUTPUT_RADIANCE);
+    model_output_accessor!(radiance_diff, I_diff, ffi::OUTPUT_RADIANCE_DIFF);
+    model_output_accessor!(tb_planck, Tb, ffi::OUTPUT_TB_PLANCK);
+    model_output_accessor!(tb_rj, Trj, ffi::OUTPUT_TB_RAYLEIGH_JEANS);
+    model_output_accessor!(tsys, Tsys, ffi::OUTPUT_TSYS);
+    model_output_accessor!(y_factor, Y, ffi::OUTPUT_Y);
+    model_output_accessor!(delay, L, ffi::OUTPUT_DELAY);
+    model_output_accessor!(free_space_loss, tau_fsl, ffi::OUTPUT_FREE_SPACE_LOSS);
+    model_output_accessor!(absorption_coeff, k_out, ffi::OUTPUT_K);
 
     /// Get the full resolved model configuration summary, equivalent to
     /// what am writes to stderr via write_model_config_data in the CLI.

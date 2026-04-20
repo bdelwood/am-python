@@ -47,3 +47,6 @@ target-version = "py310"
 python-interpreter-path = ".venv/bin/python"
 search-path = ["."]
 project-excludes = ["**/.venv*", "notebooks/**"]
+
+[tool.codespell]
+skip = "notebooks/*"

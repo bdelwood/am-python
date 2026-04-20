@@ -9,9 +9,10 @@ mod error;
 mod ffi;
 mod models;
 
+use std::collections::HashMap;
+
 use log::{debug, info};
 use numpy::PyArray1;
-use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 
@@ -21,7 +22,7 @@ pyo3_stub_gen::define_stub_info_gatherer!(stub_info);
 #[pyo3::pymodule]
 mod _am {
     use super::*;
-    use std::path::Path;
+    use std::path::PathBuf;
 
     #[pymodule_init]
     fn init(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -44,14 +45,14 @@ mod _am {
     impl Model {
         #[new]
         #[pyo3(signature = (path, args))]
-        fn new(path: &str, args: Vec<Bound<'_, PyAny>>) -> PyResult<Self> {
-            info!("Loading model from {path}");
+        fn new(path: PathBuf, args: Vec<Bound<'_, PyAny>>) -> PyResult<Self> {
+            info!("Loading model from {}", path.display());
             let string_args: Vec<String> = args
                 .iter()
                 .map(|a| a.str().map(|s| s.to_string()))
                 .collect::<PyResult<_>>()?;
             Ok(Self {
-                inner: models::AmModel::from_amc(Path::new(path), &string_args)?,
+                inner: models::AmModel::from_amc(&path, &string_args)?,
             })
         }
 
@@ -66,36 +67,37 @@ mod _am {
             PyArray1::from_slice(py, self.inner.frequency())
         }
 
+        /// Dict of computed output arrays, keyed by name.
+        /// Empty before :meth:`compute` is called.
+        #[getter]
+        fn outputs<'py>(&self, py: Python<'py>) -> HashMap<&str, Bound<'py, PyArray1<f64>>> {
+            [
+                ("opacity", self.inner.opacity()),
+                ("transmittance", self.inner.transmittance()),
+                ("radiance", self.inner.radiance()),
+                ("radiance_diff", self.inner.radiance_diff()),
+                ("tb_planck", self.inner.tb_planck()),
+                ("tb_rj", self.inner.tb_rj()),
+                ("tsys", self.inner.tsys()),
+                ("y_factor", self.inner.y_factor()),
+                ("delay", self.inner.delay()),
+                ("free_space_loss", self.inner.free_space_loss()),
+                ("absorption_coeff", self.inner.absorption_coeff()),
+            ]
+            .into_iter()
+            // filter will skip those names which return None
+            // which occurs when that particular output is not requested
+            .filter_map(|(name, s)| s.map(|s| (name, PyArray1::from_slice(py, s))))
+            .collect()
+        }
+
         // print summary like CLI
         fn summary(&mut self) -> String {
             self.inner.summary()
         }
 
-        fn __getattr__<'py>(
-            &self,
-            py: Python<'py>,
-            name: &str,
-        ) -> PyResult<Bound<'py, PyArray1<f64>>> {
-            let slice = match name {
-                "opacity" => self.inner.opacity(),
-                "transmittance" => self.inner.transmittance(),
-                "radiance" => self.inner.radiance(),
-                "radiance_diff" => self.inner.radiance_diff(),
-                "tb_planck" => self.inner.tb_planck(),
-                "tb_rj" => self.inner.tb_rj(),
-                "tsys" => self.inner.tsys(),
-                "y_factor" => self.inner.y_factor(),
-                "delay" => self.inner.delay(),
-                "free_space_loss" => self.inner.free_space_loss(),
-                "absorption_coeff" => self.inner.absorption_coeff(),
-                _ => return Err(PyAttributeError::new_err(format!("no attribute '{name}'"))),
-            };
-
-            slice.map(|s| PyArray1::from_slice(py, s)).ok_or_else(|| {
-                PyAttributeError::new_err(format!(
-                    "'{name}' was not computed -- add 'output {name}' to your .amc file"
-                ))
-            })
+        fn __str__(&mut self) -> PyResult<String> {
+            Ok(self.summary())
         }
     }
 }
