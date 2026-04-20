@@ -19,7 +19,7 @@ use pyo3_stub_gen::derive::*;
 pyo3_stub_gen::define_stub_info_gatherer!(stub_info);
 
 #[pyo3::pymodule]
-mod am {
+mod _am {
     use super::*;
     use std::path::Path;
 

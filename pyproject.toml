@@ -36,6 +36,8 @@ build-backend = "maturin"
 [tool.maturin]
 bindings = "pyo3"
 features = ["pyo3/extension-module"]
+python-source = "python"
+module-name = "am._am"
 
 [tool.ruff]
 line-length = 88

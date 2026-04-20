@@ -1,7 +1,7 @@
 use pyo3_stub_gen::Result;
 
 fn main() -> Result<()> {
-    let stub = am::stub_info()?;
+    let stub = _am::stub_info()?;
     stub.generate()?;
     Ok(())
 }
