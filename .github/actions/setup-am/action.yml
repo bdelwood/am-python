@@ -18,14 +18,6 @@ inputs:
     description: am source directory consumed by build.rs
     required: false
     default: "am-source/src"
-  amc-url:
-    description: URL of amc for tests
-    required: false
-    default: "https://lweb.cfa.harvard.edu/~spaine/am/cookbook/unix/sites/SPole/SPole_JJA_75.amc"
-  amc-file:
-    description: Destination path for amc
-    required: false
-    default: "assets/SPole_JJA_75.amc"
   download-amc:
     description: Download amc test conf
     required: false
@@ -49,12 +41,15 @@ runs:
           curl -fsSL "${{ inputs.am-source-url }}" | tar -xz --strip-components=1 -C "${{ inputs.am-dir }}"
         fi
 
-    - name: Download AMC fixture
+    - name: Download AMC fixtures
       if: inputs.download-amc == 'true'
       shell: bash
+      env:
+        AM_COOKBOOK: https://lweb.cfa.harvard.edu/~spaine/am/cookbook/unix
       run: |
-        mkdir -p "$(dirname "${{ inputs.amc-file }}")"
-        curl -fsSL "${{ inputs.amc-url }}" -o "${{ inputs.amc-file }}"
+        mkdir -p assets
+        curl -fsSL "$AM_COOKBOOK/sites/SPole/SPole_JJA_75.amc" -o assets/SPole_JJA_75.amc
+        curl -fsSL "$AM_COOKBOOK/memo_examples/chapter8/example2.5.trop_h2o_Jacobian.amc" -o assets/MaunaKea_Jacobian.amc
 
     - name: Export AM_SRC_DIR
       shell: bash
