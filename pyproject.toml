@@ -15,7 +15,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 
-dependencies = ["numpy>=2.1"]
+dependencies = ["numpy>=2.1", "xarray>=2024.1"]
 
 [dependency-groups]
 dev = [

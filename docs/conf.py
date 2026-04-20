@@ -6,9 +6,14 @@ extensions = ["autoapi.extension", "myst_parser"]
 myst_enable_extensions = ["attrs_inline"]
 
 autoapi_type = "python"
-autoapi_dirs = [".."]
-autoapi_file_patterns = ["am.pyi"]
-autoapi_options = ["members", "undoc-members", "show-module-summary"]
+autoapi_dirs = ["../python"]
+autoapi_file_patterns = ["*.pyi", "*.py"]
+autoapi_options = [
+    "members",
+    "undoc-members",
+    "show-module-summary",
+    "imported-members",
+]
 
 source_suffix = {
     ".md": "markdown",

@@ -3,14 +3,24 @@ use pyo3::prelude::*;
 use thiserror::Error;
 
 // create exceptions for Python
-pyo3_stub_gen::create_exception!(am, AmError, PyException, "Base exception for am errors.");
 pyo3_stub_gen::create_exception!(
-    am,
+    am._am,
+    AmError,
+    PyException,
+    "Base exception for am errors."
+);
+pyo3_stub_gen::create_exception!(
+    am._am,
     ConfigError,
     AmError,
     "Error parsing an .amc configuration file."
 );
-pyo3_stub_gen::create_exception!(am, ComputeError, AmError, "Error during model computation.");
+pyo3_stub_gen::create_exception!(
+    am._am,
+    ComputeError,
+    AmError,
+    "Error during model computation."
+);
 
 /// Register exception types on the am module so they're accessible from Python.
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

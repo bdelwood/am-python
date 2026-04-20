@@ -34,8 +34,25 @@ mod _am {
         Ok(())
     }
 
+    /// An am atmospheric model loaded from an ``.amc`` configuration file.
+    ///
+    /// Parameters
+    /// ----------
+    /// path:
+    ///     Path to the ``.amc`` file.
+    /// args:
+    ///     Positional substitution values for ``%1``, ``%2``, … placeholders
+    ///     in the config (frequency grid, zenith angle, PWV scale, etc.).
+    ///
+    /// Examples
+    /// --------
+    /// .. code-block:: python
+    ///
+    ///     m = am.Model("SPole_JJA_75.amc", [0, "GHz", 350, "GHz", 0.5, "GHz", 35, "deg", 1.0])
+    ///     m.compute()
+    ///     m.outputs["tb_rj"]
     #[gen_stub_pyclass]
-    #[pyclass]
+    #[pyclass(module = "am._am")]
     struct Model {
         inner: models::AmModel,
     }
@@ -56,19 +73,27 @@ mod _am {
             })
         }
 
+        /// Run the radiative transfer computation.
+        ///
+        /// Releases the GIL while running so other Python threads are not blocked.
+        /// Must be called before accessing :attr:`outputs`.
         fn compute(&mut self, py: Python<'_>) -> PyResult<()> {
             debug!("Running compute");
             py.detach(|| self.inner.compute())?;
             Ok(())
         }
 
+        /// Frequency grid in GHz.
         #[getter]
         fn frequency<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
             PyArray1::from_slice(py, self.inner.frequency())
         }
 
-        /// Dict of computed output arrays, keyed by name.
-        /// Empty before :meth:`compute` is called.
+        /// Dict mapping output name to computed spectrum array.
+        ///
+        /// Keys are Python-style names (e.g. ``"tb_rj"``, ``"opacity"``).
+        /// Only outputs listed in the ``output`` directive of the ``.amc`` file
+        /// are present. Empty before :meth:`compute` is called.
         #[getter]
         fn outputs<'py>(&self, py: Python<'py>) -> HashMap<&str, Bound<'py, PyArray1<f64>>> {
             [
@@ -91,7 +116,10 @@ mod _am {
             .collect()
         }
 
-        // print summary like CLI
+        /// Full resolved model configuration, as am would print it to stderr.
+        ///
+        /// Equivalent to running ``am`` on the command line with the same arguments.
+        /// Also available as ``str(model)`` / ``print(model)``.
         fn summary(&mut self) -> String {
             self.inner.summary()
         }

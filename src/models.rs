@@ -175,7 +175,7 @@ pub(crate) struct AmModel {
     fit_data: ffi::fit_data_t,
     simplex: ffi::simplex_t,
     /// Bitmask of OUTPUT_* indices that had the OUTPUT_USER flag set after parsing.
-    /// Bit i is set when output[i].flags & OUTPUT_USER != 0.
+    /// Bit i is set when `output[i].flags & OUTPUT_USER != 0`.
     requested: u32,
     computed: bool,
 }
