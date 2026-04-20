@@ -24,7 +24,15 @@ fn main() {
     // feature flag to enable openmp
     if env::var("CARGO_FEATURE_OPENMP").is_ok() {
         build.flag("-fopenmp");
-        println!("cargo:rustc-link-lib=gomp");
+        // Linux uses GCC's libgomp
+        // macOS/clang uses libomp
+        // In manylinux wheel builds, auditwheel bundles libgomp into the wheel,
+        // so no static linking is needed.
+        if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
+            println!("cargo:rustc-link-lib=omp");
+        } else {
+            println!("cargo:rustc-link-lib=gomp");
+        }
     }
 
     // all other am compile-time flags can be passed too
