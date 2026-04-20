@@ -12,7 +12,7 @@ mod models;
 use std::collections::HashMap;
 
 use log::{debug, info};
-use numpy::PyArray1;
+use numpy::{PyArray1, PyArray2};
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 
@@ -91,11 +91,9 @@ mod _am {
 
         /// Dict mapping output name to computed spectrum array.
         ///
-        /// Keys are Python-style names (e.g. ``"tb_rj"``, ``"opacity"``).
-        /// Only outputs listed in the ``output`` directive of the ``.amc`` file
-        /// are present. Empty before :meth:`compute` is called.
+        /// Use the Python ``Model`` wrapper for xarray outputs.
         #[getter]
-        fn outputs<'py>(&self, py: Python<'py>) -> HashMap<&str, Bound<'py, PyArray1<f64>>> {
+        fn raw_outputs<'py>(&self, py: Python<'py>) -> HashMap<&str, Bound<'py, PyArray1<f64>>> {
             [
                 ("opacity", self.inner.opacity()),
                 ("transmittance", self.inner.transmittance()),
@@ -114,6 +112,35 @@ mod _am {
             // which occurs when that particular output is not requested
             .filter_map(|(name, s)| s.map(|s| (name, PyArray1::from_slice(py, s))))
             .collect()
+        }
+
+        /// Compute Jacobians of all outputs wrt fit variables.
+        ///
+        /// Use the Python ``Model`` wrapper for xarray outputs.
+        fn raw_jacobian<'py>(
+            &mut self,
+            py: Python<'py>,
+        ) -> PyResult<HashMap<String, Bound<'py, PyArray2<f64>>>> {
+            let jac = py.detach(|| self.inner.jacobian())?;
+            Ok(jac
+                .into_iter()
+                .map(|(name, rows)| {
+                    let arr = PyArray2::from_vec2(py, &rows).unwrap();
+                    (name, arr)
+                })
+                .collect())
+        }
+
+        /// Names of fit/differentiation variables defined in the ``.amc`` config.
+        #[getter]
+        fn variables(&self) -> Vec<String> {
+            self.inner.variables()
+        }
+
+        /// Number of fit/differentiation variables.
+        #[getter]
+        fn n_variables(&self) -> u32 {
+            self.inner.n_variables()
         }
 
         /// Full resolved model configuration, as am would print it to stderr.

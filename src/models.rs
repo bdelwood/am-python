@@ -1,8 +1,8 @@
 use crate::error::{AmErr, AmResult};
 use crate::ffi;
 use log::{debug, info, warn};
-use std::collections::HashSet;
-use std::ffi::{CString, c_char, c_int};
+use std::collections::{HashMap, HashSet};
+use std::ffi::{CStr, CString, c_char, c_int};
 use std::io::Read;
 use std::os::fd::FromRawFd;
 use std::path::Path;
@@ -144,6 +144,22 @@ fn emit_warnings() {
     }
 }
 
+/// Maps Python-facing output names to their C output[] index.
+/// Used by Jacobian extraction (reads from the output[] global within one lock).
+pub(crate) const OUTPUT_TABLE: &[(&str, u32)] = &[
+    ("opacity", ffi::OUTPUT_OPACITY),
+    ("transmittance", ffi::OUTPUT_TRANSMITTANCE),
+    ("radiance", ffi::OUTPUT_RADIANCE),
+    ("radiance_diff", ffi::OUTPUT_RADIANCE_DIFF),
+    ("tb_planck", ffi::OUTPUT_TB_PLANCK),
+    ("tb_rj", ffi::OUTPUT_TB_RAYLEIGH_JEANS),
+    ("tsys", ffi::OUTPUT_TSYS),
+    ("y_factor", ffi::OUTPUT_Y),
+    ("delay", ffi::OUTPUT_DELAY),
+    ("free_space_loss", ffi::OUTPUT_FREE_SPACE_LOSS),
+    ("absorption_coeff", ffi::OUTPUT_K),
+];
+
 macro_rules! model_output_accessor {
     ($name:ident, $field:ident, $idx:expr) => {
         pub fn $name(&self) -> Option<&[f64]> {
@@ -160,18 +176,21 @@ macro_rules! model_output_accessor {
     };
 }
 
-// create struct that contains 3 objects needed to run compute:
+// Dedup warnings across model instances: only log each unique warning once.
+static LOGGED_WARNINGS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
+
+// create struct that contains 4 objects needed to run compute:
 //  model_t        model = MODEL_INIT;
 //  model_t       lmodel = MODEL_INIT;
 //  fit_data_t  fit_data = FIT_DATA_INIT;
 //  simplex_t    simplex = SIMPLEX_INIT;
 // see main.c lines 44-47
-// For now, ignore "lmodel" (aka "last model") as we're not doing fits yet
-// Dedup warnings across model instances: only log each unique warning once.
-static LOGGED_WARNINGS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
-
+// "lmodel" (aka "last model") needed for Jacobian/fits
+// Need smart pointers here to provide owned heap allocation
+// so that pointers into simplex remain valid when the struct's ownership moves to PyO3
 pub(crate) struct AmModel {
-    model: ffi::model_t,
+    model: Box<ffi::model_t>,
+    lmodel: Option<Box<ffi::model_t>>,
     fit_data: ffi::fit_data_t,
     simplex: ffi::simplex_t,
     /// Bitmask of OUTPUT_* indices that had the OUTPUT_USER flag set after parsing.
@@ -187,12 +206,15 @@ impl AmModel {
     pub fn from_amc(path: &Path, args: &[String]) -> AmResult<Self> {
         let _lock = AM_MUTEX.lock().unwrap();
 
-        // Reset am's global output state before parsing a new config.
-        // This restores output[] and outcol[] to their initial values,
-        // clearing any dangling spectrum pointers and stale flags from
-        // a previous model run.
-        debug!("Resetting am global output state");
-        unsafe { reset_output_globals() };
+        // Reset am's global state before parsing a new config.
+        // - output[]/outcol[]: restore initial values, ie clear dangling spectrum pointers
+        // - kcache: free cached absorption coefficients that reference the
+        //   previous model's layer structures
+        debug!("Resetting am global state");
+        unsafe {
+            reset_output_globals();
+            ffi::kcache_free_all();
+        };
 
         let path_str = path
             .to_str()
@@ -211,7 +233,9 @@ impl AmModel {
 
         let argc = argv.len() as c_int;
 
-        let mut model = unsafe { ffi::MODEL_INIT };
+        // Box the model before parsing so simplex.varptr[j] gets stable
+        // heap addresses from the start
+        let mut model = Box::new(unsafe { ffi::MODEL_INIT });
         let mut fit_data = unsafe { ffi::FIT_DATA_INIT };
         let mut simplex = unsafe { ffi::SIMPLEX_INIT };
 
@@ -226,7 +250,8 @@ impl AmModel {
                 ffi::parse_config_file(
                     argc,
                     argv.as_mut_ptr(),
-                    &mut model,
+                    // remember to deref
+                    &mut *model,
                     &mut fit_data,
                     &mut simplex,
                 )
@@ -244,12 +269,10 @@ impl AmModel {
 
         emit_warnings();
 
-        // Snapshot which outputs the user requested: bit i is set when
-        // output[i].flags has OUTPUT_USER set. Must be read now, under the mutex,
-        // before reset_output_globals wipes it for the next model.
-        const OUTPUT_USER: i32 = 0x1;
+        // Snapshot which outputs the user requested before reset_output_globals
+        // wipes them for the next model.
         let requested: u32 = (0..14_usize)
-            .filter(|&i| (unsafe { ffi::output[i].flags } & OUTPUT_USER) != 0)
+            .filter(|&i| (unsafe { ffi::output[i].flags } & ffi::OUTPUT_USER as i32) != 0)
             .fold(0u32, |acc, i| acc | (1 << i));
 
         info!(
@@ -259,6 +282,7 @@ impl AmModel {
 
         Ok(Self {
             model,
+            lmodel: None,
             fit_data,
             simplex,
             requested,
@@ -274,7 +298,7 @@ impl AmModel {
         debug!("Calling compute_model (ngrid={})", self.model.ngrid);
 
         // compute_model writes only to errlog, not stderr directly.
-        let ret = unsafe { ffi::compute_model(&mut self.model, std::ptr::null_mut()) };
+        let ret = unsafe { ffi::compute_model(&mut *self.model, std::ptr::null_mut()) };
 
         if ret != 0 {
             // Capture print_errlog output for the error message.
@@ -313,6 +337,150 @@ impl AmModel {
     model_output_accessor!(free_space_loss, tau_fsl, ffi::OUTPUT_FREE_SPACE_LOSS);
     model_output_accessor!(absorption_coeff, k_out, ffi::OUTPUT_K);
 
+    /// Number of fit/differentiation variables defined in the .amc config.
+    pub fn n_variables(&self) -> u32 {
+        self.simplex.n
+    }
+
+    /// Names of the fit/differentiation variables defined in the .amc config.
+    pub fn variables(&self) -> Vec<String> {
+        let n = self.simplex.n as usize;
+        if n == 0 || self.simplex.name.is_null() {
+            return Vec::new();
+        }
+        (0..n)
+            .map(|i| {
+                let ptr = unsafe { *self.simplex.name.add(i) };
+                if ptr.is_null() {
+                    String::new()
+                } else {
+                    unsafe { CStr::from_ptr(ptr) }
+                        .to_string_lossy()
+                        .into_owned()
+                }
+            })
+            .collect()
+    }
+
+    /// Lazily initialize lmodel for Jacobians/fitting (main.c lines 130-148).
+    /// Caller must hold AM_MUTEX.
+    fn ensure_lmodel(&mut self) -> AmResult<()> {
+        if self.lmodel.is_some() {
+            return Ok(());
+        }
+        let mut lmodel = Box::new(unsafe { ffi::MODEL_INIT });
+        let ret = unsafe { ffi::setup_atmospheric_model(&mut *self.model, std::ptr::null_mut()) };
+        if ret != 0 {
+            return Err(AmErr::Compute("setup_atmospheric_model failed".into()));
+        }
+        let ret = unsafe { ffi::copy_model_dimensions(&mut *self.model, &mut *lmodel) };
+        if ret != 0 {
+            unsafe { ffi::free_model_entities(&mut *lmodel) };
+            return Err(AmErr::Compute("copy_model_dimensions failed".into()));
+        }
+        self.lmodel = Some(lmodel);
+        Ok(())
+    }
+
+    /// Compute Jacobians of all requested outputs wrt fit variables.
+    /// Returns a map from output name to a 2D array (n_variables x ngrid).
+    /// The .amc config must define fit variables.
+    pub fn jacobian(&mut self) -> AmResult<HashMap<String, Vec<Vec<f64>>>> {
+        if self.simplex.n == 0 {
+            return Err(AmErr::Config(
+                "No fit variables defined. Add a scale to parameters in the .amc config \
+                 (e.g. 'T 250 K 5 K') to enable Jacobian computation."
+                    .into(),
+            ));
+        }
+
+        let _lock = AM_MUTEX.lock().unwrap();
+
+        // Set OUTPUT_JACOBIAN flag on user-requested outputs that support it,
+        // and on ALL_OUTPUTS (which compute_jacobians checks as a gate).
+        for i in 1..ffi::OUTPUT_END_OF_TABLE as usize {
+            let flags = unsafe { ffi::output[i].flags };
+            let is_requested = self.requested & (1 << i) != 0;
+            if is_requested && flags & ffi::JACOBIAN_ALLOWED as i32 != 0 {
+                unsafe { ffi::output[i].flags |= ffi::OUTPUT_JACOBIAN as i32 };
+            }
+        }
+        unsafe {
+            ffi::output[ffi::ALL_OUTPUTS as usize].flags |= ffi::OUTPUT_JACOBIAN as i32;
+        }
+
+        let ret = unsafe { ffi::alloc_jacobians(&mut *self.model, &mut self.simplex) };
+        if ret != 0 {
+            return Err(AmErr::Compute("alloc_jacobians failed".into()));
+        }
+
+        self.ensure_lmodel()?;
+        let lmodel = &mut **self.lmodel.as_mut().unwrap();
+
+        // Compute, then unconditionally free jacobian arrays before returning.
+        let err = unsafe {
+            let r = ffi::compute_jacobians(&mut *self.model, lmodel, &mut self.simplex);
+            if r != 0 {
+                Some("compute_jacobians failed")
+            } else {
+                let r = ffi::compute_model(&mut *self.model, lmodel);
+                if r != 0 {
+                    Some("compute_model failed after jacobian")
+                } else {
+                    None
+                }
+            }
+        };
+
+        // Extract jacobian data from output[] before freeing.
+        // Apply unit conversion to match CLI: scale by variable_unit_factor / output_unit_factor.
+        let n_vars = self.simplex.n as usize;
+        let ngrid = self.model.ngrid as usize;
+        let unit_tab_ptr = std::ptr::addr_of!(ffi::unit_tab) as *const ffi::unit_tabentry;
+
+        // Per-variable unit factors: unit_tab[simplex.unitnum[j]].factor
+        let var_factors: Vec<f64> = (0..n_vars)
+            .map(|j| unsafe {
+                let unitnum = *self.simplex.unitnum.add(j) as usize;
+                (*unit_tab_ptr.add(unitnum)).factor
+            })
+            .collect();
+
+        let result: HashMap<String, Vec<Vec<f64>>> = OUTPUT_TABLE
+            .iter()
+            .filter_map(|&(name, idx)| {
+                let jac_ptr = unsafe { ffi::output[idx as usize].jacobian };
+                if jac_ptr.is_null() {
+                    return None;
+                }
+                // Output unit factor: unit_tab[output[idx].unitnum].factor
+                let out_unitnum = unsafe { ffi::output[idx as usize].unitnum } as usize;
+                let out_factor = unsafe { (*unit_tab_ptr.add(out_unitnum)).factor };
+
+                let matrix = (0..n_vars)
+                    .map(|j| {
+                        let scale = var_factors[j] / out_factor;
+                        unsafe { std::slice::from_raw_parts(*jac_ptr.add(j), ngrid) }
+                            .iter()
+                            .map(|&v| v * scale)
+                            .collect()
+                    })
+                    .collect();
+                Some((name.to_string(), matrix))
+            })
+            .collect();
+
+        unsafe { ffi::free_jacobians(&mut self.simplex) };
+
+        if let Some(msg) = err {
+            return Err(AmErr::Compute(msg.into()));
+        }
+
+        emit_warnings();
+        self.computed = true;
+        Ok(result)
+    }
+
     /// Get the full resolved model configuration summary, equivalent to
     /// what am writes to stderr via write_model_config_data in the CLI.
     pub fn summary(&mut self) -> String {
@@ -321,7 +489,7 @@ impl AmModel {
             capture_file_output(|stream| {
                 ffi::write_model_config_data(
                     stream,
-                    &mut self.model,
+                    &mut *self.model,
                     &mut self.fit_data,
                     &mut self.simplex,
                 );
@@ -335,12 +503,24 @@ impl Drop for AmModel {
         debug!("Dropping AmModel, freeing model entities");
         let _lock = AM_MUTEX.lock().unwrap();
         unsafe {
-            ffi::free_model_entities(&mut self.model);
+            // Save output[].spectrum — free_model_entities nullifies them as a
+            // side effect, which would corrupt another live model's state.
+            let saved_spectra: [*mut f64; 14] = std::array::from_fn(|i| ffi::output[i].spectrum);
+
+            if let Some(ref mut lmodel) = self.lmodel {
+                ffi::free_model_entities(&mut **lmodel);
+            }
+            ffi::free_model_entities(&mut *self.model);
             ffi::free_fit_data_entities(&mut self.fit_data);
             ffi::free_simplex_entities(&mut self.simplex);
-            // Unlike main.c, Do NOT call kcache_free_all(), free_Nscale_list(),free_tag_string_table()
-            // They free memory but leave their file-scope static pointers dangling;
-            // they are not reset to null.
+
+            // Restore — another model may still need these pointers.
+            for (i, ptr) in saved_spectra.into_iter().enumerate() {
+                ffi::output[i].spectrum = ptr;
+            }
+            // kcache is cleared in from_amc() before each new model, not here.
+            // free_Nscale_list/free_tag_string_table leave dangling static
+            // pointers so are never safe to call in a library context.
         }
     }
 }
@@ -394,5 +574,61 @@ mod tests {
         let summary = m.summary();
         assert!(summary.contains("am version"), "missing version: {summary}");
         assert!(summary.contains("f 0 GHz"), "missing freq grid: {summary}");
+    }
+
+    const JACOBIAN_AMC: &str = "assets/MaunaKea_Jacobian.amc";
+
+    fn jacobian_args() -> Vec<String> {
+        [
+            "220", "GHz", "230", "GHz", "5", "GHz", "0", "deg", "277", "K", "1.0",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+    }
+
+    #[test]
+    fn test_jacobian_no_variables() {
+        let mut m = AmModel::from_amc(Path::new(AMC), &args()).unwrap();
+        m.compute().unwrap();
+        let err = m.jacobian().unwrap_err();
+        assert!(
+            err.to_string().contains("No fit variables"),
+            "unexpected: {err}"
+        );
+    }
+
+    #[test]
+    fn test_jacobian() {
+        let mut m = AmModel::from_amc(Path::new(JACOBIAN_AMC), &jacobian_args()).unwrap();
+        assert_eq!(m.n_variables(), 1);
+        assert_eq!(m.variables(), vec!["Nscale troposphere h2o"]);
+
+        m.compute().unwrap();
+        let jac = m.jacobian().unwrap();
+        assert!(jac.contains_key("tb_rj"), "missing tb_rj: {:?}", jac.keys());
+
+        let tb_jac = &jac["tb_rj"];
+        assert_eq!(tb_jac.len(), 1, "expected 1 variable");
+        assert_eq!(tb_jac[0].len(), 3, "expected 3 frequency points");
+
+        // CLI: dTrj/d(Nscale_h2o) at 220 GHz = 16.67748
+        let expected = 16.67748;
+        let got = tb_jac[0][0];
+        assert!(
+            (got - expected).abs() / expected < 1e-4,
+            "dTrj/dNscale at 220 GHz: got {got}, expected {expected}"
+        );
+
+        assert!(m.computed);
+        assert!(m.tb_rj().is_some());
+    }
+
+    #[test]
+    fn test_jacobian_without_prior_compute() {
+        let mut m = AmModel::from_amc(Path::new(JACOBIAN_AMC), &jacobian_args()).unwrap();
+        let jac = m.jacobian().unwrap();
+        assert!(!jac.is_empty());
+        assert!(m.tb_rj().is_some());
     }
 }

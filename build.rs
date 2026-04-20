@@ -68,17 +68,21 @@ fn main() {
             .header(am_src.join("nscale.h").to_str().unwrap())
             .header(am_src.join("tags.h").to_str().unwrap())
             .header(am_src.join("simplex.h").to_str().unwrap())
+            .header(am_src.join("jacobian.h").to_str().unwrap())
+            .header(am_src.join("units.h").to_str().unwrap())
             .clang_arg(format!("-I{}", am_src.display()))
-            .allowlist_type("model_t|layer_t|column_t|abscoeff_t|fit_data_t|simplex_t|output_tabentry")
+            .allowlist_type("model_t|layer_t|column_t|abscoeff_t|fit_data_t|simplex_t|output_tabentry|unit_tabentry")
             .allowlist_function(
                 "parse_config_file|compute_model|setup_atmospheric_model|\
                  total_airmass|total_refraction|\
                  free_model_entities|free_fit_data_entities|free_simplex_entities|\
                  kcache_free_all|free_Nscale_list|free_tag_string_table|\
                  errstat|errtest|print_errlog|set_active_outputs|\
-                 write_model_config_data",
+                 write_model_config_data|\
+                 compute_jacobians|alloc_jacobians|free_jacobians|\
+                 copy_model_dimensions",
             )
-            .allowlist_var("MODEL_INIT|FIT_DATA_INIT|SIMPLEX_INIT|output|outcol|OUTPUT_END_OF_TABLE|ALL_OUTPUTS")
+            .allowlist_var("MODEL_INIT|FIT_DATA_INIT|SIMPLEX_INIT|output|outcol|OUTPUT_END_OF_TABLE|ALL_OUTPUTS|OUTPUT_USER|OUTPUT_JACOBIAN|JACOBIAN_ALLOWED|OUTPUT_FITTED|OUTPUT_ACTIVE|unit_tab")
             .blocklist_type("FILE|_IO_FILE|_IO_marker|_IO_codecvt|_IO_wide_data")
             .raw_line("pub type FILE = std::os::raw::c_void;")
             .generate()

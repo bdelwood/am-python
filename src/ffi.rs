@@ -588,10 +588,19 @@ unsafe extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
+    pub fn alloc_jacobians(arg1: *mut model_t, arg2: *mut simplex_t) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    pub fn copy_model_dimensions(arg1: *mut model_t, arg2: *mut model_t) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
     pub fn free_fit_data_entities(arg1: *mut fit_data_t);
 }
 unsafe extern "C" {
     pub fn free_model_entities(arg1: *mut model_t);
+}
+unsafe extern "C" {
+    pub fn free_jacobians(arg1: *mut simplex_t);
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -656,6 +665,17 @@ pub const OUTPUT_END_OF_TABLE: _bindgen_ty_6 = 13;
 pub type _bindgen_ty_6 = ::std::os::raw::c_uint;
 pub const ALL_OUTPUTS: _bindgen_ty_7 = 13;
 pub type _bindgen_ty_7 = ::std::os::raw::c_uint;
+pub const OUTPUT_USER: _bindgen_ty_8 = 1;
+pub const OUTPUT_FITTED: _bindgen_ty_8 = 2;
+pub const OUTPUT_ACTIVE: _bindgen_ty_8 = 4;
+pub const ILS_ALLOWED: _bindgen_ty_8 = 8;
+pub const ILS_APPLIED: _bindgen_ty_8 = 16;
+pub const JACOBIAN_ALLOWED: _bindgen_ty_8 = 32;
+pub const OUTPUT_JACOBIAN: _bindgen_ty_8 = 64;
+pub const OUTPUT_JACOBIAN_ERRS: _bindgen_ty_8 = 128;
+pub const OUTPUT_AM_ONLY: _bindgen_ty_8 = 256;
+pub const OUTPUT_HEADERS: _bindgen_ty_8 = 512;
+pub type _bindgen_ty_8 = ::std::os::raw::c_uint;
 unsafe extern "C" {
     // bindgen emits 0 for unsized extern arrays; actual size is OUTPUT_END_OF_TABLE
     pub static mut outcol: [::std::os::raw::c_int; 13usize];
@@ -691,4 +711,34 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub fn free_simplex_entities(arg1: *mut simplex_t);
+}
+unsafe extern "C" {
+    pub fn compute_jacobians(
+        arg1: *mut model_t,
+        arg2: *mut model_t,
+        arg3: *mut simplex_t,
+    ) -> ::std::os::raw::c_int;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct unit_tabentry {
+    pub name: *const ::std::os::raw::c_char,
+    pub group: ::std::os::raw::c_int,
+    pub offset: f64,
+    pub factor: f64,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of unit_tabentry"][::std::mem::size_of::<unit_tabentry>() - 32usize];
+    ["Alignment of unit_tabentry"][::std::mem::align_of::<unit_tabentry>() - 8usize];
+    ["Offset of field: unit_tabentry::name"][::std::mem::offset_of!(unit_tabentry, name) - 0usize];
+    ["Offset of field: unit_tabentry::group"]
+        [::std::mem::offset_of!(unit_tabentry, group) - 8usize];
+    ["Offset of field: unit_tabentry::offset"]
+        [::std::mem::offset_of!(unit_tabentry, offset) - 16usize];
+    ["Offset of field: unit_tabentry::factor"]
+        [::std::mem::offset_of!(unit_tabentry, factor) - 24usize];
+};
+unsafe extern "C" {
+    pub static mut unit_tab: [unit_tabentry; 0usize];
 }
